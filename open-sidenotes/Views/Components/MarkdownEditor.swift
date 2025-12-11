@@ -17,6 +17,26 @@ class ClickableTextView: NSTextView {
 
         super.mouseDown(with: event)
     }
+
+    override func mouseMoved(with event: NSEvent) {
+        let point = self.convert(event.locationInWindow, from: nil)
+        let charIndex = self.characterIndexForInsertion(at: point)
+
+        if let delegate = clickDelegate,
+           let checkboxRange = delegate.findTaskCheckboxRange(in: self, at: charIndex),
+           delegate.isPositionInCheckbox(charIndex, checkboxRange: checkboxRange) {
+            NSCursor.pointingHand.set()
+        } else {
+            NSCursor.iBeam.set()
+        }
+
+        super.mouseMoved(with: event)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        clickDelegate?.setupTrackingArea(for: self)
+    }
 }
 
 struct MarkdownEditor: NSViewRepresentable {
@@ -92,6 +112,7 @@ struct MarkdownEditor: NSViewRepresentable {
         scrollView.verticalScroller = CustomScroller()
 
         context.coordinator.renderMarkdown(in: textView, text: text)
+        context.coordinator.setupTrackingArea(for: textView)
 
         return scrollView
     }
@@ -142,6 +163,7 @@ struct MarkdownEditor: NSViewRepresentable {
         var currentEditingLineRange: NSRange?
         var slashCommandRange: NSRange?
         var lastSelectedLanguage: CodeLanguage?
+        var trackingArea: NSTrackingArea?
 
         init(_ parent: MarkdownEditor) {
             self.parent = parent
@@ -483,6 +505,28 @@ struct MarkdownEditor: NSViewRepresentable {
                 textView.didChangeText()
                 textView.setSelectedRange(savedSelection)
             }
+        }
+
+        func setupTrackingArea(for textView: NSTextView) {
+            if let existingArea = trackingArea {
+                textView.removeTrackingArea(existingArea)
+            }
+
+            let options: NSTrackingArea.Options = [
+                .mouseMoved,
+                .activeInActiveApp,
+                .inVisibleRect
+            ]
+
+            let area = NSTrackingArea(
+                rect: textView.bounds,
+                options: options,
+                owner: textView,
+                userInfo: nil
+            )
+
+            textView.addTrackingArea(area)
+            trackingArea = area
         }
     }
 }
