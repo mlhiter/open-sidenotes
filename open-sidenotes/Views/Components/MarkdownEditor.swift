@@ -395,6 +395,27 @@ struct MarkdownEditor: NSViewRepresentable {
             }
             return nil
         }
+
+        private func findTaskCheckboxRange(in textView: NSTextView, at position: Int) -> NSRange? {
+            let text = textView.string as NSString
+            let lineRange = text.lineRange(for: NSRange(location: position, length: 0))
+            let lineText = text.substring(with: lineRange)
+
+            let pattern = "^(\\s*)([-*+])\\s+(\\[([ xX])\\])\\s+(.+)$"
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+
+            guard let match = regex.firstMatch(in: lineText, range: NSRange(location: 0, length: lineText.count)) else {
+                return nil
+            }
+
+            let checkboxLocalRange = match.range(at: 3)
+            let checkboxAbsoluteRange = NSRange(
+                location: lineRange.location + checkboxLocalRange.location,
+                length: checkboxLocalRange.length
+            )
+
+            return checkboxAbsoluteRange
+        }
     }
 }
 
