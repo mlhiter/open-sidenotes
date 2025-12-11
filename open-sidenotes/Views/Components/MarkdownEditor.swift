@@ -1,6 +1,24 @@
 import SwiftUI
 import AppKit
 
+class ClickableTextView: NSTextView {
+    weak var clickDelegate: MarkdownEditor.Coordinator?
+
+    override func mouseDown(with event: NSEvent) {
+        let point = self.convert(event.locationInWindow, from: nil)
+        let charIndex = self.characterIndexForInsertion(at: point)
+
+        if let delegate = clickDelegate,
+           let checkboxRange = delegate.findTaskCheckboxRange(in: self, at: charIndex),
+           delegate.isPositionInCheckbox(charIndex, checkboxRange: checkboxRange) {
+            delegate.toggleTaskStatus(in: self, at: charIndex)
+            return
+        }
+
+        super.mouseDown(with: event)
+    }
+}
+
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var searchQuery: String = ""
@@ -30,8 +48,18 @@ struct MarkdownEditor: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+
+        let textContainer = NSTextContainer()
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = ClickableTextView(frame: .zero, textContainer: textContainer)
+        textView.clickDelegate = context.coordinator
+
+        let scrollView = NSScrollView()
+        scrollView.documentView = textView
 
         textView.isRichText = true
         textView.isEditable = true
@@ -347,6 +375,10 @@ struct MarkdownEditor: NSViewRepresentable {
             slashCommandRange = nil
         }
 
+        func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
+            return true
+        }
+
         func textView(_ view: NSTextView, menu: NSMenu, for event: NSEvent, at charIndex: Int) -> NSMenu? {
             if let codeBlockRange = findCodeBlockRange(in: view, at: charIndex) {
                 let copyItem = NSMenuItem(
@@ -396,7 +428,7 @@ struct MarkdownEditor: NSViewRepresentable {
             return nil
         }
 
-        private func findTaskCheckboxRange(in textView: NSTextView, at position: Int) -> NSRange? {
+        func findTaskCheckboxRange(in textView: NSTextView, at position: Int) -> NSRange? {
             let text = textView.string as NSString
             let lineRange = text.lineRange(for: NSRange(location: position, length: 0))
             let lineText = text.substring(with: lineRange)
@@ -417,13 +449,13 @@ struct MarkdownEditor: NSViewRepresentable {
             return checkboxAbsoluteRange
         }
 
-        private func isPositionInCheckbox(_ position: Int, checkboxRange: NSRange) -> Bool {
+        func isPositionInCheckbox(_ position: Int, checkboxRange: NSRange) -> Bool {
             let tolerance = 2
             return position >= checkboxRange.location - tolerance &&
                    position <= checkboxRange.location + checkboxRange.length + tolerance
         }
 
-        private func toggleTaskStatus(in textView: NSTextView, at position: Int) {
+        func toggleTaskStatus(in textView: NSTextView, at position: Int) {
             guard let checkboxRange = findTaskCheckboxRange(in: textView, at: position) else { return }
 
             let text = textView.string as NSString
