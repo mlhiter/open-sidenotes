@@ -61,9 +61,10 @@ struct TextBlockEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         print("🆕 [TextBlockEditor] TextView created and configured")
 
+        textView.autoresizingMask = [.width]
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
-        textView.autoresizingMask = [.width]
 
         if let textContainer = textView.textContainer {
             textContainer.lineFragmentPadding = 0
