@@ -197,6 +197,18 @@ struct MarkdownEditor: NSViewRepresentable {
                     break
                 }
             }
+
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                let event = NSApp.currentEvent
+                if event?.modifierFlags.contains(.command) == true {
+                    let cursorPosition = textView.selectedRange().location
+                    if findTaskCheckboxRange(in: textView, at: cursorPosition) != nil {
+                        toggleTaskStatus(in: textView, at: cursorPosition)
+                        return true
+                    }
+                }
+            }
+
             return false
         }
 
