@@ -416,6 +416,12 @@ struct MarkdownEditor: NSViewRepresentable {
 
             return checkboxAbsoluteRange
         }
+
+        private func isPositionInCheckbox(_ position: Int, checkboxRange: NSRange) -> Bool {
+            let tolerance = 2
+            return position >= checkboxRange.location - tolerance &&
+                   position <= checkboxRange.location + checkboxRange.length + tolerance
+        }
     }
 }
 
