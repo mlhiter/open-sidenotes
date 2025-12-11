@@ -422,6 +422,36 @@ struct MarkdownEditor: NSViewRepresentable {
             return position >= checkboxRange.location - tolerance &&
                    position <= checkboxRange.location + checkboxRange.length + tolerance
         }
+
+        private func toggleTaskStatus(in textView: NSTextView, at position: Int) {
+            guard let checkboxRange = findTaskCheckboxRange(in: textView, at: position) else { return }
+
+            let text = textView.string as NSString
+            let checkboxText = text.substring(with: checkboxRange)
+
+            let pattern = "\\[([ xX])\\]"
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                  let match = regex.firstMatch(in: checkboxText, range: NSRange(location: 0, length: checkboxText.count)) else {
+                return
+            }
+
+            let checkboxCharRange = match.range(at: 1)
+            let checkboxChar = (checkboxText as NSString).substring(with: checkboxCharRange)
+            let newChar = (checkboxChar == " ") ? "x" : " "
+
+            let absoluteCharRange = NSRange(
+                location: checkboxRange.location + checkboxCharRange.location,
+                length: checkboxCharRange.length
+            )
+
+            let savedSelection = textView.selectedRange()
+
+            if textView.shouldChangeText(in: absoluteCharRange, replacementString: newChar) {
+                textView.textStorage?.replaceCharacters(in: absoluteCharRange, with: newChar)
+                textView.didChangeText()
+                textView.setSelectedRange(savedSelection)
+            }
+        }
     }
 }
 
